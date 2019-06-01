@@ -1,6 +1,13 @@
 use std::io::{BufReader, BufRead, Write};
 use std::process::{ChildStdin, ChildStdout, Command, Stdio};
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum Satisfiability {
+    Sat,
+    Unsat,
+    Unknown,
+}
+
 pub struct Solver {
     z3_stdin: ChildStdin,
     z3_stdout: BufReader<ChildStdout>,
@@ -21,16 +28,17 @@ impl Solver {
         }
     }
 
-    pub fn input(&mut self, input: String) {
+    pub fn input(&mut self, input: &str) {
         writeln!(self.z3_stdin, "{}", input).expect("Failed to send input to Z3 process");
     }
 
-    pub fn check_sat(&mut self) -> bool {
+    pub fn check_sat(&mut self) -> Satisfiability {
         writeln!(self.z3_stdin, "(check-sat)").expect("Failed to check_sat");
         let sat = self.read_line();
         match &*sat {
-            "sat" => true,
-            "unsat" => false,
+            "sat" => Satisfiability::Sat,
+            "unsat" => Satisfiability::Unsat,
+            "unknown" => Satisfiability::Unknown,
             _ => panic!("Unknown value for satisfiability: {}", sat), // FIXME: what about unknown and such?
         }
     }
