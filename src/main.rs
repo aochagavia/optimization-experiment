@@ -90,7 +90,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     // Constraint: at a given round, a teacher cannot teach more than max_students
-    let max_students = students.len() / rounds;
+    let max_students = (students.len() as f64 / teachers.len() as f64).ceil() as usize;
     for teacher in 0..teachers.len() {
         for round in 0..rounds {
             write!(input, "(assert (>= {} (+ ", max_students)?;
