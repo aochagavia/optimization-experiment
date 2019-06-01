@@ -21,6 +21,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         "Joost",
         "Tato",
         "Martijn",
+        "Everard",
+        "Matthijs",
+        "Henrik",
+        "Remy",
+        "Eugen",
+        "Fabian",
+        "Sebastian",
+        "Ben",
     ];
 
     let teachers = vec![
@@ -126,8 +134,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     solver.input(&input);
     let sat = solver.check_sat();
 
-    if sat != Satisfiability::Sat {
-        println!("Not satisfiable solution found within the given time");
+    if sat == Satisfiability::Unknown {
+        println!("No satisfiable solution found within the given time");
+        return Ok(());
+    }
+    if sat == Satisfiability::Unsat {
+        println!("Unsatisfiable");
         return Ok(());
     }
 
