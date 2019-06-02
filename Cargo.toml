@@ -5,3 +5,4 @@ authors = ["Adolfo Ochagavía <aochagavia92@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+rand = "0.6.5"
