@@ -9,10 +9,18 @@ use solution::Solution;
 use solver::{Satisfiability, Solver};
 
 pub fn student_const(student: usize, round: usize, teacher: usize) -> String {
-    format!("s{}_r{}_t{}", student, round, teacher)
+    format!("s{}_a{}_t{}", student + 1, round + 1, teacher + 1)
 }
 
-pub fn solve(students: usize, teachers: usize, rounds: usize, minimum_meetings: Option<usize>) -> Result<Solution, Box<dyn Error>> {
+pub fn student_has_met(student: usize, other_student: usize) -> String {
+    format!("s{}_has_met_s{}", student + 1, other_student + 1)
+}
+
+pub fn students_in_class(teacher: usize, round: usize) -> String {
+    format!("t{}_a{}", teacher + 1, round + 1)
+}
+
+pub fn solve(students: usize, teachers: usize, rounds: usize) -> Result<Solution, Box<dyn Error>> {
     if teachers > rounds {
         return Err("There must at least be as many teachers as rounds, due to our constraints".into());
     }
@@ -20,16 +28,7 @@ pub fn solve(students: usize, teachers: usize, rounds: usize, minimum_meetings: 
     let mut input = String::new();
 
     // Define a helper function that counts ones in a bit vector of length `students`
-    let mut zero = String::from("#b");
-    zero.extend(iter::repeat('0').take(students));
-    let mut one = String::from("#b");
-    one.extend(iter::repeat('0').take(students - 1));
-    one.push('1');
-    write!(input, "(define-fun countOnes ((x (_ BitVec {0}))) Int (bv2int (bvadd ", students)?;
-    for bit in 0..students {
-        write!(input, "(ite (= #b1 ((_ extract {0} {0}) x)) {1} {2})", bit, one, zero)?;
-    }
-    writeln!(input, ")))")?;
+    writeln!(input, "(define-fun bool2int ((x Bool)) Int (ite x 1 0))")?;
 
     // Declare a constant for each student, round, teacher combination
     for student in 0..students {
@@ -40,19 +39,12 @@ pub fn solve(students: usize, teachers: usize, rounds: usize, minimum_meetings: 
         }
     }
 
-    // Declare a BitVec of people a student has met
-    if minimum_meetings.is_some() {
-        for student in 0..students {
-            writeln!(input, "(declare-const s{} (_ BitVec {}))", student, students)?;
-        }
-    }
-
     // Constraint: for each round, each student has only one assigned teacher
     for student in 0..students {
         for round in 0..rounds {
             write!(input, "(assert (= 1 (+ ")?;
             for teacher in 0..teachers {
-                write!(input, "(ite {} 1 0) ", student_const(student, round, teacher))?;
+                write!(input, "(bool2int {}) ", student_const(student, round, teacher))?;
             }
             writeln!(input, ")))")?;
         }
@@ -69,49 +61,46 @@ pub fn solve(students: usize, teachers: usize, rounds: usize, minimum_meetings: 
         }
     }
 
-    // Constraint: at a given round, a teacher cannot teach more than max_students
+    // Constraint: at a given round, a teacher cannot teach more than max_students or less than min_students
     let max_students = (students as f64 / teachers as f64).ceil() as usize;
+    let min_students = students / teachers;
     for teacher in 0..teachers {
         for round in 0..rounds {
-            write!(input, "(assert (>= {} (+ ", max_students)?;
+            write!(input, "(define-fun {} () Int (+ ", students_in_class(teacher, round))?;
             for student in 0..students {
-                write!(input, "(ite {} 1 0) ", student_const(student, round, teacher))?;
+                write!(input, "(bool2int {}) ", student_const(student, round, teacher))?;
             }
-            writeln!(input, ")))")?;
+            writeln!(input, "))")?;
+            writeln!(input, "(assert (>= {} {}))", max_students, students_in_class(teacher, round));
+            writeln!(input, "(assert (<= {} {}))", min_students, students_in_class(teacher, round));
         }
     }
 
-    // Constraint to calculate how many people met each other
-    if let Some(minimum_meetings) = minimum_meetings {
-        for student in 0..students {
-            write!(input, "(assert (= s{} (bvor ", student)?;
-            for other_student in 0..students {
+    // Functions to calculate how many people met each other
+    for student in 0..students {
+        for other_student in student + 1..students {
+            write!(input, "(define-fun {} () Bool (or ", student_has_met(student, other_student))?;
+            for teacher in 0..teachers {
                 for round in 0..rounds {
-                    for teacher in 0..teachers {
-                        let mut other_student_code = String::from("#b");
-                        for _ in 0..other_student {
-                            other_student_code.push('0');
-                        }
-                        other_student_code.push('1');
-                        for _ in other_student + 1 ..students {
-                            other_student_code.push('0');
-                        }
-                        write!(input, "(ite {} (ite {} {} {3}) {3})", student_const(student, round, teacher), student_const(other_student, round, teacher), other_student_code, zero)?;
-                    }
+                    write!(input, "(and {} {}) ", student_const(student, round, teacher), student_const(other_student, round, teacher))?;
                 }
             }
-            writeln!(input, ")))")?;
-        }
-
-        // Constraint: each student should have met at least 4 other students
-        for student in 0..students {
-            writeln!(input, "(assert (< {} (countOnes s{})))", minimum_meetings, student)?;
+            writeln!(input, "))")?;
         }
     }
+
+    // Maximize number of meetings
+    write!(input, "(maximize (+ ")?;
+    for student in 0..students {
+        for other_student in student + 1..students {
+            write!(input, "(bool2int {})", student_has_met(student, other_student))?;
+        }
+    }
+    writeln!(input, "))")?;
 
     // Fire up solver and check sat
     let mut solver = Solver::new();
-    // println!("{}", input);
+    println!("{}", input);
     solver.input("(set-option :timeout 10000)");
     solver.input(&input);
     let sat = solver.check_sat();

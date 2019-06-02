@@ -1,5 +1,5 @@
 [package]
-name = "sudoku-z3"
+name = "optimize-z3"
 version = "0.1.0"
 authors = ["Adolfo Ochagavía <aochagavia92@gmail.com>"]
 edition = "2018"
