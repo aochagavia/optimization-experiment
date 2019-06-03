@@ -15,8 +15,13 @@ pub fn student_has_met(student: usize, other_student: usize) -> String {
     format!("s{}_has_met_s{}", student + 1, other_student + 1)
 }
 
-pub fn students_in_class(teacher: usize, round: usize) -> String {
-    format!("t{}_a{}", teacher + 1, round + 1)
+pub fn students_in_class(students: usize, teacher: usize, round: usize) -> String {
+    let mut output = String::new();
+    for student in 0..students {
+        output.push_str(&student_const(student, round, teacher));
+        output.push(' ');
+    }
+    output
 }
 
 pub fn solve(students: usize, teachers: usize, rounds: usize) -> Result<Solution, Box<dyn Error>> {
@@ -27,7 +32,7 @@ pub fn solve(students: usize, teachers: usize, rounds: usize) -> Result<Solution
     let mut input = String::new();
 
     // Define a helper function that counts ones in a bit vector of length `students`
-    writeln!(input, "(define-fun bool2int ((x Bool)) Int (ite x 1 0))")?;
+    // writeln!(input, "(define-fun bool2int ((x Bool)) Int (ite x 1 0))")?;
 
     // Declare a constant for each student, round, teacher combination
     for student in 0..students {
@@ -41,11 +46,19 @@ pub fn solve(students: usize, teachers: usize, rounds: usize) -> Result<Solution
     // Constraint: for each round, each student has only one assigned teacher
     for student in 0..students {
         for round in 0..rounds {
-            write!(input, "(assert (= 1 (+ ")?;
+            // At least 1
+            write!(input, "(assert ((_ at-least 1) ")?;
             for teacher in 0..teachers {
-                write!(input, "(bool2int {}) ", student_const(student, round, teacher))?;
+                write!(input, "{} ", student_const(student, round, teacher))?;
             }
-            writeln!(input, ")))")?;
+            writeln!(input, "))")?;
+
+            // At most 1
+            write!(input, "(assert ((_ at-most 1) ")?;
+            for teacher in 0..teachers {
+                write!(input, "{} ", student_const(student, round, teacher))?;
+            }
+            writeln!(input, "))")?;
         }
     }
 
@@ -65,13 +78,8 @@ pub fn solve(students: usize, teachers: usize, rounds: usize) -> Result<Solution
     let min_students = students / teachers;
     for teacher in 0..teachers {
         for round in 0..rounds {
-            write!(input, "(define-fun {} () Int (+ ", students_in_class(teacher, round))?;
-            for student in 0..students {
-                write!(input, "(bool2int {}) ", student_const(student, round, teacher))?;
-            }
-            writeln!(input, "))")?;
-            writeln!(input, "(assert (>= {} {}))", max_students, students_in_class(teacher, round))?;
-            writeln!(input, "(assert (<= {} {}))", min_students, students_in_class(teacher, round))?;
+            writeln!(input, "(assert ((_ at-most {}) {}))", max_students, students_in_class(students, teacher, round))?;
+            writeln!(input, "(assert ((_ at-least {}) {}))", min_students, students_in_class(students, teacher, round))?;
         }
     }
 
@@ -89,13 +97,22 @@ pub fn solve(students: usize, teachers: usize, rounds: usize) -> Result<Solution
     }
 
     // Maximize number of meetings
-    write!(input, "(maximize (+ ")?;
-    for student in 0..students {
-        for other_student in student + 1..students {
-            write!(input, "(bool2int {})", student_has_met(student, other_student))?;
-        }
-    }
-    writeln!(input, "))")?;
+    // write!(input, "(maximize (+ ")?;
+    // for student in 0..students {
+    //     for other_student in student + 1..students {
+    //         write!(input, "(bool2int {})", student_has_met(student, other_student))?;
+    //     }
+    // }
+    // writeln!(input, "))")?;
+
+    // Constrain number of meetings
+    // write!(input, "(assert ((_ at-least {}) ")?;
+    // for student in 0..students {
+    //     for other_student in student + 1..students {
+    //         write!(input, "{} ", student_has_met(student, other_student))?;
+    //     }
+    // }
+    // writeln!(input, "))")?;
 
     // Fire up solver and check sat
     let mut solver = Solver::new();
