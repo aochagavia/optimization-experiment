@@ -99,8 +99,7 @@ pub fn solve(students: usize, teachers: usize, rounds: usize) -> Result<Solution
 
     // Fire up solver and check sat
     let mut solver = Solver::new();
-    println!("{}", input);
-    panic!();
+    // println!("{}", input);
     solver.input("(set-option :timeout 60000)");
     solver.input(&input);
     let sat = solver.check_sat();
