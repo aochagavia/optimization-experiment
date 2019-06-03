@@ -1,13 +1,14 @@
 use std::io::{BufReader, BufRead, Write};
 use std::process::{ChildStdin, ChildStdout, Command, Stdio};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Satisfiability {
     Sat,
     Unsat,
     Unknown,
 }
 
+#[derive(Debug)]
 pub struct Solver {
     z3_stdin: ChildStdin,
     z3_stdout: BufReader<ChildStdout>,

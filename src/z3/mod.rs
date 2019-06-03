@@ -3,6 +3,7 @@ mod solver;
 
 use std::error::Error;
 use std::fmt::Write;
+use std::iter;
 
 use solution::Solution;
 use solver::{Satisfiability, Solver};
@@ -31,9 +32,6 @@ pub fn solve(students: usize, teachers: usize, rounds: usize) -> Result<Solution
 
     let mut input = String::new();
 
-    // Define a helper function that counts ones in a bit vector of length `students`
-    // writeln!(input, "(define-fun bool2int ((x Bool)) Int (ite x 1 0))")?;
-
     // Declare a constant for each student, round, teacher combination
     for student in 0..students {
         for round in 0..rounds {
@@ -44,17 +42,13 @@ pub fn solve(students: usize, teachers: usize, rounds: usize) -> Result<Solution
     }
 
     // Constraint: for each round, each student has only one assigned teacher
+    let ones: String = iter::repeat("1 ").take(teachers).collect();
+    println!("Ones: {}", ones);
     for student in 0..students {
         for round in 0..rounds {
+            // `(_ pbeq k c1 c2) x y` means `c1 * x + c2 * y = k`
             // At least 1
-            write!(input, "(assert ((_ at-least 1) ")?;
-            for teacher in 0..teachers {
-                write!(input, "{} ", student_const(student, round, teacher))?;
-            }
-            writeln!(input, "))")?;
-
-            // At most 1
-            write!(input, "(assert ((_ at-most 1) ")?;
+            write!(input, "(assert ((_ pbeq 1 {}) ", ones)?;
             for teacher in 0..teachers {
                 write!(input, "{} ", student_const(student, round, teacher))?;
             }
@@ -73,6 +67,8 @@ pub fn solve(students: usize, teachers: usize, rounds: usize) -> Result<Solution
         }
     }
 
+    dbg!("Alive");
+
     // Constraint: at a given round, a teacher cannot teach more than max_students or less than min_students
     let max_students = (students as f64 / teachers as f64).ceil() as usize;
     let min_students = students / teachers;
@@ -82,6 +78,8 @@ pub fn solve(students: usize, teachers: usize, rounds: usize) -> Result<Solution
             writeln!(input, "(assert ((_ at-least {}) {}))", min_students, students_in_class(students, teacher, round))?;
         }
     }
+
+    dbg!("Alive");
 
     // Functions to calculate how many people met each other
     for student in 0..students {
@@ -96,34 +94,58 @@ pub fn solve(students: usize, teachers: usize, rounds: usize) -> Result<Solution
         }
     }
 
-    // Maximize number of meetings
-    // write!(input, "(maximize (+ ")?;
-    // for student in 0..students {
-    //     for other_student in student + 1..students {
-    //         write!(input, "(bool2int {})", student_has_met(student, other_student))?;
-    //     }
-    // }
-    // writeln!(input, "))")?;
+    dbg!("Alive");
 
-    // Constrain number of meetings
-    // write!(input, "(assert ((_ at-least {}) ")?;
-    // for student in 0..students {
-    //     for other_student in student + 1..students {
-    //         write!(input, "{} ", student_has_met(student, other_student))?;
-    //     }
-    // }
-    // writeln!(input, "))")?;
+    // If `n` is the number of students, then the amount of unique meetings between two people is
+    // `n * (n - 1) / 2` (order doesn't matter and we don't count meeting yourself)
 
-    // Fire up solver and check sat
-    let mut solver = Solver::new();
-    // println!("{}", input);
-    solver.input("(set-option :timeout 60000)");
+    let mut solver = dbg!(Solver::new());
+    solver.input("(set-option :timeout 2000)");
+    dbg!("Alive");
+    println!("{}", input);
     solver.input(&input);
-    let sat = solver.check_sat();
+    dbg!("Alive");
+    drop(input); // So we don't accidentally try to use it afterwards
 
-    match sat {
-        Satisfiability::Unknown => Err("No satisfiable solution found within the given time".into()),
-        Satisfiability::Unsat => Err("Unsatisfiable".into()),
-        Satisfiability::Sat => Ok(Solution::new(solver)),
+    dbg!("Alive");
+
+    let mut min_n = 0;
+    let mut max_n = (students * (students - 1)) / 2;
+    let mut n;
+    let mut last_solution = None;
+    println!("Start binary search with min_n = {} and max_n = {}", min_n, max_n);
+    while min_n + 1 < max_n {
+        n = (min_n + max_n) / 2;
+
+        // Save current state, so we can restore it when we go to the next iteration
+        solver.input("(push)");
+
+        let mut assertion = String::new();
+        write!(assertion, "(assert ((_ at-least {}) ", n)?;
+        for student in 0..students {
+            for other_student in student + 1..students {
+                write!(assertion, "{} ", student_has_met(student, other_student))?;
+            }
+        }
+        writeln!(assertion, "))")?;
+        solver.input(&assertion);
+
+        let sat = solver.check_sat();
+        match sat {
+            Satisfiability::Sat => {
+                min_n = n;
+                last_solution = Some(Solution::new(&mut solver, students, teachers, rounds));
+            }
+            _ => max_n = n,
+        }
+
+        println!("n = {}: {:?}", n, sat);
+
+        solver.input("(pop)");
+    }
+
+    match last_solution {
+        Some(sol) => Ok(sol),
+        None => Err("No satisfiable solution found within the given time".into()),
     }
 }

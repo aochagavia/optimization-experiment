@@ -1,23 +1,43 @@
+use std::collections::HashSet;
+
 use crate::z3::student_const;
 use crate::z3::solver::Solver;
 
 pub struct Solution {
-    solver: Solver,
+    students: usize,
+    teachers: usize,
+    rounds: usize,
+    student_consts: HashSet<String>,
 }
 
 impl Solution {
-    pub fn new(solver: Solver) -> Solution {
-        Solution { solver }
+    pub fn new(solver: &mut Solver, students: usize, teachers: usize, rounds: usize) -> Solution {
+        let mut student_consts = HashSet::new();
+
+        for round in 0..rounds {
+            for teacher in 0..teachers {
+                for student in 0..students {
+                    if is_teacher_for_student(solver, student, teacher, round) {
+                        student_consts.insert(student_const(student, round, teacher));
+                    }
+                }
+            }
+        }
+
+        Solution { student_consts, students, teachers, rounds }
     }
 
-    pub fn print(&mut self, students: usize, teachers: usize, rounds: usize) {
-        for round in 0..rounds {
-            println!("Round {}", round);
-            for teacher in 0..teachers {
-                print!("Teacher {}: ", teacher);
-                for student in 0..students {
+    pub fn print(&self, students: &[&str], teachers: &[&str]) {
+        assert_eq!(students.len(), self.students);
+        assert_eq!(teachers.len(), self.teachers);
+
+        for round in 0..self.rounds {
+            println!("Round {}", round + 1);
+            for teacher in 0..self.teachers {
+                print!("{}: ", teachers[teacher]);
+                for student in 0..self.students {
                     if self.is_teacher_for_student(student, teacher, round) {
-                        print!("Student {}, ", student);
+                        print!("{}, ", students[student]);
                     }
                 }
                 println!();
@@ -25,11 +45,11 @@ impl Solution {
         }
     }
 
-    pub fn is_teacher_for_student(&mut self, student: usize, teacher: usize, round: usize) -> bool {
-        self.solver.eval(student_const(student, round, teacher)).parse().unwrap()
+    pub fn is_teacher_for_student(&self, student: usize, teacher: usize, round: usize) -> bool {
+        self.student_consts.contains(&student_const(student, round, teacher))
     }
+}
 
-    pub fn students_met(&mut self, student: usize) -> String {
-        self.solver.eval(format!("s{}", student))
-    }
+fn is_teacher_for_student(solver: &mut Solver, student: usize, teacher: usize, round: usize) -> bool {
+    solver.eval(student_const(student, round, teacher)).parse().unwrap()
 }
