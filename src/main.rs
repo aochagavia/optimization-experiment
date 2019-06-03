@@ -31,9 +31,11 @@ fn benchmark(students: usize, teachers: usize, rounds: usize) {
 }
 
 fn main() {
-    benchmark(6, 2, 2);
-    benchmark(6, 3, 3);
-    benchmark(7, 3, 3);
+    // benchmark(6, 2, 2);
+    // benchmark(6, 3, 3);
+    // benchmark(7, 3, 3);
+    benchmark(9, 3, 3);
+    // benchmark(15, 3, 5);
     // for students in 5..=10 {
     //     benchmark(students, 3, 3);
     // }

@@ -3,7 +3,6 @@ mod solver;
 
 use std::error::Error;
 use std::fmt::Write;
-use std::iter;
 
 use solution::Solution;
 use solver::{Satisfiability, Solver};
@@ -71,8 +70,8 @@ pub fn solve(students: usize, teachers: usize, rounds: usize) -> Result<Solution
                 write!(input, "(bool2int {}) ", student_const(student, round, teacher))?;
             }
             writeln!(input, "))")?;
-            writeln!(input, "(assert (>= {} {}))", max_students, students_in_class(teacher, round));
-            writeln!(input, "(assert (<= {} {}))", min_students, students_in_class(teacher, round));
+            writeln!(input, "(assert (>= {} {}))", max_students, students_in_class(teacher, round))?;
+            writeln!(input, "(assert (<= {} {}))", min_students, students_in_class(teacher, round))?;
         }
     }
 
@@ -101,7 +100,8 @@ pub fn solve(students: usize, teachers: usize, rounds: usize) -> Result<Solution
     // Fire up solver and check sat
     let mut solver = Solver::new();
     println!("{}", input);
-    solver.input("(set-option :timeout 10000)");
+    panic!();
+    solver.input("(set-option :timeout 60000)");
     solver.input(&input);
     let sat = solver.check_sat();
 
