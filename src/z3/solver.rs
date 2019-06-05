@@ -40,7 +40,7 @@ impl Solver {
             "sat" => Satisfiability::Sat,
             "unsat" => Satisfiability::Unsat,
             "unknown" => Satisfiability::Unknown,
-            _ => panic!("Unknown value for satisfiability: {}", sat), // FIXME: what about unknown and such?
+            _ => panic!("Unknown value for satisfiability: {}", sat),
         }
     }
 

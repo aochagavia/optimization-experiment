@@ -19,8 +19,6 @@ Note that, while I mention some of the steps that led me to the final solution, 
 right way to model the problem involved a lot of trial and error. The real process is messier than
 this blog post may suggest.
 
-<!-- Make sure the project on GH has a proper readme, stating that you need Z3 on your path. Explaining how to build and run the Rust program. -->
-
 ## Wait... What is Z3?
 
 From the official [tutorial](https://rise4fun.com/Z3/tutorial/guide):
@@ -79,8 +77,8 @@ with the bindings and the documentation was non-existing, I ended up filing an
 
 ## Building a custom interface to Z3
 
-Since I really wanted to use Rust for this project, I set out to find a work
-around for the lack of bindings. It turns out that you can use Z3 as a REPL if
+Since I really wanted to use Rust for this project, I set out to find a workaround
+for the lack of bindings. It turns out that you can use Z3 as a REPL if
 to run the binary as `z3 -in`. In practice, this means that you can write a Rust
 program that talks to the Z3 REPL under the hood, by piping input to Z3's stdin
 and piping the responses back from Z3's stdout. A hacky and stringy-typed
@@ -112,11 +110,11 @@ struct Solution {
 Here, student index ranges from `0` to `i`, teacher index from `0` to `j` and
 assignment index from `0` to `k`. So if we want to know the designated teacher
 for student `2` during assignment `0`, we can write
-`solution.designated_teachers.contains(&(2, 0));`.
+`solution.designated_teachers[&(2, 0)];`.
 
-In Z3 you can express this as a list of booleans in the form `s{x}_a{y}_t{z}`,
-where each boolean indicates whether student x is doing assignment y under
-supervision of teacher z. So if there are 6 students, 2 assignments and 2
+In Z3 we express this as a list of booleans in the form `s{x}_a{y}_t{z}`,
+where each boolean indicates whether student `x` is doing assignment `y` under
+supervision of teacher `z`. So if there are 6 students, 2 assignments and 2
 teachers, it would look as follows:
 
 ```
@@ -135,14 +133,13 @@ teachers, it would look as follows:
 
 Note that the repetition doesn't matter, because the code is being generated anyway.
 By the way, there are also other ways to express the output to this problem, like using
-`(declare-const s1_a1 Int)` instead of `(declare-const s1_a1_t1 Bool)`, so we can store
-the teacher index and reduce the amount of constants we need. However, the current representation
-has some advantages when defining the rest of the problem.
+`(declare-const s1_a1 Int)` instead of `(declare-const s1_a1_t1 Bool)`. However, the
+current representation has some advantages when defining the rest of the problem.
 
 ## Modeling the problem, part 2
 
-Now we have defined how the output of the solution looks like, we need to tell Z3 the constraints
-that are required by a valid solution. These are:
+Now we have defined how the output of the solution looks like, the next step is to
+tell Z3 the constraints that are required by a valid solution. These are:
 
 1. For each assignment, a student can only work under the supervision of one
    teacher (e.g. `s1_a1_t1 && s1_a1_t2` can never be true in the same solution)
@@ -151,7 +148,9 @@ that are required by a valid solution. These are:
    `ceil(j / i)` students (i.e. you don't want one teacher having 1 student and
    other having 9)
 
-The first constraint is quite easy to express? Undocumented...
+Below you see the first constraint. Note that `(_ pbeq 1 1 1 )` is just a
+complicated (and undocumented) way of saying "from all these boolean values,
+require exactly one of them to be true".
 
 ```
 (assert ((_ pbeq 1 1 1 ) s1_a1_t1 s1_a1_t2 ))
@@ -163,7 +162,8 @@ The first constraint is quite easy to express? Undocumented...
 (assert ((_ pbeq 1 1 1 ) s6_a2_t1 s6_a2_t2 ))
 ```
 
-The second constraint (every teacher must teach every student at least once), as follows:
+The second constraint (every teacher must teach every student at least once)
+can be expressed as follows:
 
 ```
 (assert (or s1_a1_t1 s1_a2_t1 ))
@@ -175,7 +175,10 @@ The second constraint (every teacher must teach every student at least once), as
 (assert (or s6_a1_t2 s6_a2_t2 ))
 ```
 
-Last one (for each assignment, every teacher must teach between `floor(j / i)` and `ceil(j / i)`), as follows:
+Finally, the last constraint (for each assignment, every teacher must teach
+between `floor(j / i)` and `ceil(j / i)`), becomes the following series of
+statements (note that `(_ at-most 3)` and `(_ at-least 3)` refer to the amount
+of boolean values that must be true):
 
 ```
 (assert ((_ at-most 3) s1_a1_t1 s2_a1_t1 s3_a1_t1 s4_a1_t1 s5_a1_t1 s6_a1_t1 ))
@@ -215,28 +218,35 @@ asked a
 [question](https://stackoverflow.com/questions/56418132/how-can-i-best-tackle-this-optimization-problem)
 on StackOverflow, with the hope that someone would point out an obvious flaw in
 my setup. Alas, after following other people's suggestions, the result was still
-to slow. Still, I got to improve some details and renewed my inspiration to
-continue with my quest.
+too slow. Well, at least I got to improve some details and gathered extra inspiration
+to continue with my quest.
 
 ## Binary search to the rescue!
 
-At a certain point, I read somewhere that you could use timeouts in combination
-with binary search to find... Of course, no guarantee that you arrive to an
-optimal solution... If it takes more than 10 seconds, it doesn't finish. Use
-that as a timeout. Great results.
+While looking for a solution, I came across a comment somewhere that suggested
+using binary search. This involves using constraints instead of asking Z3 to
+maximize the objective function. For instance, we no longer say: "find the
+solution with the maximum amount of meetings between students". Instead, we
+say: "I am only interested in solutions where the amount of meetings is at
+least `n`", where `n` changes according to the binary search pattern.
 
-In the end: binary search (ab)using constraints
+When Z3 fails to find a solution within the given time (or when it proves that
+no solution is possible given the constraints), you lower `n`. When it does
+find a solution, you increase `n`. After `log n` steps you have finished your
+search.
 
-Push, pop
+Of course, there is no guarantee that you arrive to a truly optimal solution...
+Maybe there is a better one to be found if you are willing to wait for [seven and
+a half million years](https://hitchhikers.fandom.com/wiki/42). In my case, however,
+the results were good enough.
 
 ## Conclusion
 
-Documentation... Quite obscure that some functions existed. XKCD what did you
-see! Not really discoverable. On the other hand, interactive thing on rise4fun
-is great! And docs are quite good for a research project.
+There are so many other things that we could do! I am curious to know how good the
+results produced by Z3 are and how they compare to the solutions produced by other
+methods. Would Gurobi be able to find an optimal solution in normal time? What about
+randomized approaches like simulated annealing?
 
-MIT licensed! I'm probably going to earn money with this in the future.
-
-Magic! And actually quite easy to use once you get through the first hurdles
-
-Advent of code day 23 of 2019. Maybe the next blog post?
+Unfortunately, my time is limited and I feel I have already devoted too much time to this.
+If you somehow get inspired to continue where I left off, please let me know! You can
+find my email by looking at the git history of any of my repositories.
