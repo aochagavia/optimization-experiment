@@ -19,7 +19,7 @@ use std::time::Instant;
 
 fn benchmark(students: usize, teachers: usize, rounds: usize) {
     let start = Instant::now();
-    let mut solution = z3::solve(students, teachers, rounds).expect("Failed to obtain solution");
+    let solution = z3::solve(students, teachers, rounds).expect("Failed to obtain solution");
     // let solution = randomized::solve(students, teachers, rounds, iterations);
     // let solution_score = solution.score(students, teachers);
     // let teacher_score = solution.teacher_score(students, teachers);
@@ -31,9 +31,9 @@ fn benchmark(students: usize, teachers: usize, rounds: usize) {
 }
 
 fn main() {
-    user_friendly();
-    // benchmark(6, 2, 2);
-    // benchmark(6, 3, 3);
+    // user_friendly();
+    benchmark(6, 2, 2);
+    benchmark(6, 3, 3);
     // benchmark(7, 3, 3);
     // benchmark(9, 3, 3);
     // benchmark(15, 3, 5);

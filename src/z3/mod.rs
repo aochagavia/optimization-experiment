@@ -67,8 +67,6 @@ pub fn solve(students: usize, teachers: usize, rounds: usize) -> Result<Solution
         }
     }
 
-    dbg!("Alive");
-
     // Constraint: at a given round, a teacher cannot teach more than max_students or less than min_students
     let max_students = (students as f64 / teachers as f64).ceil() as usize;
     let min_students = students / teachers;
@@ -78,8 +76,6 @@ pub fn solve(students: usize, teachers: usize, rounds: usize) -> Result<Solution
             writeln!(input, "(assert ((_ at-least {}) {}))", min_students, students_in_class(students, teacher, round))?;
         }
     }
-
-    dbg!("Alive");
 
     // Functions to calculate how many people met each other
     for student in 0..students {
@@ -94,20 +90,14 @@ pub fn solve(students: usize, teachers: usize, rounds: usize) -> Result<Solution
         }
     }
 
-    dbg!("Alive");
-
     // If `n` is the number of students, then the amount of unique meetings between two people is
     // `n * (n - 1) / 2` (order doesn't matter and we don't count meeting yourself)
 
-    let mut solver = dbg!(Solver::new());
+    let mut solver = Solver::new();
     solver.input("(set-option :timeout 2000)");
-    dbg!("Alive");
-    println!("{}", input);
+    // println!("{}", input);
     solver.input(&input);
-    dbg!("Alive");
     drop(input); // So we don't accidentally try to use it afterwards
-
-    dbg!("Alive");
 
     let mut min_n = 0;
     let mut max_n = (students * (students - 1)) / 2;
