@@ -1,12 +1,9 @@
-mod solution;
-mod solver;
-
 use std::error::Error;
 use std::fmt::Write;
 use std::iter;
 
-use solution::Solution;
-use solver::{Satisfiability, Solver};
+use crate::solution::Solution;
+use crate::z3::{Satisfiability, Z3};
 
 pub fn student_const(student: usize, round: usize, teacher: usize) -> String {
     format!("s{}_a{}_t{}", student + 1, round + 1, teacher + 1)
@@ -43,7 +40,6 @@ pub fn solve(students: usize, teachers: usize, rounds: usize) -> Result<Solution
 
     // Constraint: for each round, each student has only one assigned teacher
     let ones: String = iter::repeat("1 ").take(teachers).collect();
-    println!("Ones: {}", ones);
     for student in 0..students {
         for round in 0..rounds {
             // `(_ pbeq k c1 c2) x y` means `c1 * x + c2 * y = k`
@@ -93,7 +89,7 @@ pub fn solve(students: usize, teachers: usize, rounds: usize) -> Result<Solution
     // If `n` is the number of students, then the amount of unique meetings between two people is
     // `n * (n - 1) / 2` (order doesn't matter and we don't count meeting yourself)
 
-    let mut solver = Solver::new();
+    let mut solver = Z3::new();
     solver.input("(set-option :timeout 2000)");
     // println!("{}", input);
     solver.input(&input);

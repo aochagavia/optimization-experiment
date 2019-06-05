@@ -9,13 +9,13 @@ pub enum Satisfiability {
 }
 
 #[derive(Debug)]
-pub struct Solver {
+pub struct Z3 {
     z3_stdin: ChildStdin,
     z3_stdout: BufReader<ChildStdout>,
 }
 
-impl Solver {
-    pub fn new() -> Solver {
+impl Z3 {
+    pub fn new() -> Z3 {
         let z3 = Command::new("z3")
             .args(&["-in"])
             .stdin(Stdio::piped())
@@ -23,7 +23,7 @@ impl Solver {
             .spawn()
             .expect("Failed to spawn Z3 process");
 
-        Solver {
+        Z3 {
             z3_stdin: z3.stdin.expect("Failed to open stdin to Z3"),
             z3_stdout: BufReader::new(z3.stdout.expect("Failed to open stdout to Z3")),
         }

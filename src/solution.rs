@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
-use crate::z3::student_const;
-use crate::z3::solver::Solver;
+use crate::solver::student_const;
+use crate::z3::Z3;
 
 pub struct Solution {
     students: usize,
@@ -11,13 +11,13 @@ pub struct Solution {
 }
 
 impl Solution {
-    pub fn new(solver: &mut Solver, students: usize, teachers: usize, rounds: usize) -> Solution {
+    pub fn new(z3: &mut Z3, students: usize, teachers: usize, rounds: usize) -> Solution {
         let mut student_consts = HashSet::new();
 
         for round in 0..rounds {
             for teacher in 0..teachers {
                 for student in 0..students {
-                    if is_teacher_for_student(solver, student, teacher, round) {
+                    if is_teacher_for_student(z3, student, teacher, round) {
                         student_consts.insert(student_const(student, round, teacher));
                     }
                 }
@@ -50,6 +50,6 @@ impl Solution {
     }
 }
 
-fn is_teacher_for_student(solver: &mut Solver, student: usize, teacher: usize, round: usize) -> bool {
-    solver.eval(student_const(student, round, teacher)).parse().unwrap()
+fn is_teacher_for_student(z3: &mut Z3, student: usize, teacher: usize, round: usize) -> bool {
+    z3.eval(student_const(student, round, teacher)).parse().unwrap()
 }
