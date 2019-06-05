@@ -16,7 +16,7 @@ and the comments on Hacker News suggested that I was wrong. Now I was curious. I
 This blog post is a report on this adventure, in which I used Z3 to model and solve the problem.
 The code is on [GitHub](https://github.com/aochagavia/optimization-experiment), in case you are curious.
 Note that, while I mention some of the steps that led me to the final solution, finding the
-right way to model the problem involved a lot of trial and error. The real process is messier than
+right way to model the problem involved lots of trial and error. The real process was messier than
 this blog post may suggest.
 
 ## Wait... What is Z3?
@@ -31,8 +31,8 @@ From the official [tutorial](https://rise4fun.com/Z3/tutorial/guide):
 
 For our purposes, it comes down to the following: if we manage to express our
 problem in terms of logical formulas, then we can pass that to Z3 and let it
-find a solution to the problem. There is no need to think about which algorithms
-you have to use... just the formulas and Z3 magic!
+find a solution to the problem. There is no need to think algorithms... just
+the formulas and Z3 magic!
 
 ## The problem
 
@@ -79,9 +79,9 @@ with the bindings and the documentation was non-existing, I ended up filing an
 
 Since I really wanted to use Rust for this project, I set out to find a workaround
 for the lack of bindings. It turns out that you can use Z3 as a REPL if
-to run the binary as `z3 -in`. In practice, this means that you can write a Rust
+to run the binary as `z3 -in`. This means that you can write a Rust
 program that talks to the Z3 REPL under the hood, by piping input to Z3's stdin
-and piping the responses back from Z3's stdout. A hacky and stringy-typed
+and getting the responses back from Z3's stdout. A hacky and stringy-typed
 approach, but it actually worked quite well.
 
 An unexpected benefit is that I no longer had to use the (undocumented)
@@ -142,7 +142,7 @@ Now we have defined how the output of the solution looks like, the next step is 
 tell Z3 the constraints that are required by a valid solution. These are:
 
 1. For each assignment, a student can only work under the supervision of one
-   teacher (e.g. `s1_a1_t1 && s1_a1_t2` can never be true in the same solution)
+   teacher
 1. Every teacher must teach every student at least once
 1. For each assignment, every teacher must teach between `floor(j / i)` and
    `ceil(j / i)` students (i.e. you don't want one teacher having 1 student and
@@ -156,7 +156,7 @@ require exactly one of them to be true".
 (assert ((_ pbeq 1 1 1 ) s1_a1_t1 s1_a1_t2 ))
 (assert ((_ pbeq 1 1 1 ) s1_a2_t1 s1_a2_t2 ))
 ...
-...
+... Here go the same constraints, but for s2, s3, s4 and s5
 ...
 (assert ((_ pbeq 1 1 1 ) s6_a1_t1 s6_a1_t2 ))
 (assert ((_ pbeq 1 1 1 ) s6_a2_t1 s6_a2_t2 ))
@@ -169,7 +169,7 @@ can be expressed as follows:
 (assert (or s1_a1_t1 s1_a2_t1 ))
 (assert (or s1_a1_t2 s1_a2_t2 ))
 ...
-...
+... Here go the same constraints, but for s2, s3, s4 and s5
 ...
 (assert (or s6_a1_t1 s6_a2_t1 ))
 (assert (or s6_a1_t2 s6_a2_t2 ))
@@ -177,8 +177,7 @@ can be expressed as follows:
 
 Finally, the last constraint (for each assignment, every teacher must teach
 between `floor(j / i)` and `ceil(j / i)`), becomes the following series of
-statements (note that `(_ at-most 3)` and `(_ at-least 3)` refer to the amount
-of boolean values that must be true):
+statements:
 
 ```
 (assert ((_ at-most 3) s1_a1_t1 s2_a1_t1 s3_a1_t1 s4_a1_t1 s5_a1_t1 s6_a1_t1 ))
@@ -190,12 +189,15 @@ of boolean values that must be true):
 ...
 ```
 
+Note: `(_ at-most 3)` and `(_ at-least 3)` refer to the amount
+of boolean values that must be true.
+
 ## Asking Z3 to maximize something
 
 The code we have generated so far is already enough for Z3 to find a solution.
 However, we are not looking for *any* solution, but for an *optimal* one. We
 mentioned before that we want to maximize the amount of meetings between
-students, so at the end, most people have met each other at least once.
+students, so at the end, most people have met each other.
 
 Another way to put it is this: ideally, each student will have worked together
 with each other student at least once. We can use a function `s{x}_has_met_s{y}`
@@ -206,6 +208,8 @@ functions):
 ```
 (define-fun s1_has_met_s2 () Bool (or (and s1_a1_t1 s2_a1_t1) (and s1_a2_t1 s2_a2_t1) (and s1_a1_t2 s2_a1_t2) (and s1_a2_t2 s2_a2_t2) ))
 (define-fun s1_has_met_s3 () Bool (or (and s1_a1_t1 s3_a1_t1) (and s1_a2_t1 s3_a2_t1) (and s1_a1_t2 s3_a1_t2) (and s1_a2_t2 s3_a2_t2) ))
+...
+... More combinations
 ...
 (define-fun s5_has_met_s6 () Bool (or (and s5_a1_t1 s6_a1_t1) (and s5_a2_t1 s6_a2_t1) (and s5_a1_t2 s6_a1_t2) (and s5_a2_t2 s6_a2_t2) ))
 ```
@@ -228,7 +232,7 @@ using binary search. This involves using constraints instead of asking Z3 to
 maximize the objective function. For instance, we no longer say: "find the
 solution with the maximum amount of meetings between students". Instead, we
 say: "I am only interested in solutions where the amount of meetings is at
-least `n`", where `n` changes according to the binary search pattern.
+least `n`", where `n` changes according to the binary search algorithm.
 
 When Z3 fails to find a solution within the given time (or when it proves that
 no solution is possible given the constraints), you lower `n`. When it does
@@ -244,9 +248,8 @@ the results were good enough.
 
 There are so many other things that we could do! I am curious to know how good the
 results produced by Z3 are and how they compare to the solutions produced by other
-methods. Would Gurobi be able to find an optimal solution in normal time? What about
-randomized approaches like simulated annealing?
-
-Unfortunately, my time is limited and I feel I have already devoted too much time to this.
+methods. Would the Gurobi solver be able to find an optimal solution in normal time?
+What about randomized approaches like simulated annealing? Unfortunately, my time is
+limited and I feel I have already devoted too much time to this.
 If you somehow get inspired to continue where I left off, please let me know! You can
 find my email by looking at the git history of any of my repositories.
