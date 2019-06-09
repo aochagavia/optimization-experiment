@@ -91,7 +91,6 @@ pub fn solve(students: usize, teachers: usize, rounds: usize) -> Result<Solution
 
     let mut solver = Z3::new();
     solver.input("(set-option :timeout 2000)");
-    // println!("{}", input);
     solver.input(&input);
     drop(input); // So we don't accidentally try to use it afterwards
 
@@ -99,8 +98,10 @@ pub fn solve(students: usize, teachers: usize, rounds: usize) -> Result<Solution
     let mut max_n = (students * (students - 1)) / 2;
     let mut n;
     let mut last_solution = None;
+
+    #[cfg(debug_assertions)]
     println!("Start binary search with min_n = {} and max_n = {}", min_n, max_n);
-    while min_n + 1 < max_n {
+    while min_n <= max_n {
         n = (min_n + max_n) / 2;
 
         // Save current state, so we can restore it when we go to the next iteration
@@ -119,12 +120,13 @@ pub fn solve(students: usize, teachers: usize, rounds: usize) -> Result<Solution
         let sat = solver.check_sat();
         match sat {
             Satisfiability::Sat => {
-                min_n = n;
+                min_n = n + 1;
                 last_solution = Some(Solution::new(&mut solver, students, teachers, rounds));
             }
-            _ => max_n = n,
+            _ => max_n = n - 1,
         }
 
+        #[cfg(debug_assertions)]
         println!("n = {}: {:?}", n, sat);
 
         solver.input("(pop)");

@@ -27,17 +27,17 @@ impl Solution {
         Solution { student_consts, students, teachers, rounds }
     }
 
-    pub fn print(&self, students: &[&str], teachers: &[&str]) {
+    pub fn print<T: AsRef<str>>(&self, students: &[T], teachers: &[T]) {
         assert_eq!(students.len(), self.students);
         assert_eq!(teachers.len(), self.teachers);
 
         for round in 0..self.rounds {
-            println!("Round {}", round + 1);
+            println!("Ronde {}", round + 1);
             for teacher in 0..self.teachers {
-                print!("{}: ", teachers[teacher]);
+                print!("{}: ", teachers[teacher].as_ref());
                 for student in 0..self.students {
                     if self.is_teacher_for_student(student, teacher, round) {
-                        print!("{}, ", students[student]);
+                        print!("{}, ", students[student].as_ref());
                     }
                 }
                 println!();
